@@ -1,0 +1,31 @@
+create table transactions (
+	transaction_id int4,
+    product_id int4,
+    customer_id int4,
+    transaction_date date,
+    online_order bool,
+    order_status varchar(20)
+);
+
+create table products (
+  product_id int4,
+  brand varchar(20),
+  product_line varchar(20),
+  product_class varchar(20),
+  product_size varchar(20),
+  list_price float4,
+  standard_cost float4
+);
+
+create table jobs (
+  job_title varchar(50),
+  job_industry_category varchar(20)
+);
+
+create table addresses (
+  address varchar(50),
+  postcode int4,
+  state varchar(20),
+  country varchar(20),
+  property_valuation int4
+);
