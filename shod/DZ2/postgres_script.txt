@@ -1,0 +1,47 @@
+select distinct brand
+from transaction s
+where standard_cost > 1500;
+
+
+select *
+from transaction s
+where (transaction_date between '2017-04-01' and '2017-04-09') and order_status = 'Approved';
+
+
+select job_title
+from customer s
+where (job_industry_category = 'IT' or job_industry_category = 'Financial Services') and job_title like 'Senior%';
+
+
+select t.brand
+from transaction t
+full outer join customer c
+on t.customer_id = c.customer_id
+where c.job_industry_category = 'Financial Services';
+
+
+select c.first_name, c.last_name
+from transaction t
+full outer join customer c
+on t.customer_id = c.customer_id
+where (t.brand = 'Giant Bicycles' or t.brand = 'Norco Bicycles' or t.brand = 'Trek Bicycles') and t.online_order = 'true'
+limit 10
+
+
+select distinct c.first_name, c.last_name
+from customer c
+where c.customer_id not in (select t.customer_id from transaction t )
+
+
+select distinct c.first_name, c.last_name
+from transaction t
+full outer join customer c
+on t.customer_id = c.customer_id
+where (t.standard_cost = (select max(t.standard_cost) from transaction t)) and c.job_industry_category = 'IT'
+
+
+select distinct c.first_name, c.last_name
+from transaction t
+full outer join customer c
+on t.customer_id = c.customer_id
+where (transaction_date between '2017-07-07' and '2017-07-17') and (c.job_industry_category = 'IT' or c.job_industry_category = 'Health')
