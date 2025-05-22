@@ -25,7 +25,7 @@ def main():
     if args.train_df is None and args.save_model:
         warnings.warn('Train datasets are not specified, no saving will be done')
     
-    model = LogisticRegression()
+    model = LogisticRegression() # Пока используем обычную логистикческую регрессию
     if args.train_df:
         print('Reading train dataset....................')
         df = pd.read_csv(args.train_df)
@@ -33,11 +33,11 @@ def main():
         y = df['target']
 
         print('Starting cross validation....................')
-        cv = cross_validate(model, X, y, cv=5, scoring='roc_auc', verbose=10)
+        cv = cross_validate(model, X, y, cv=5, scoring='roc_auc', verbose=10) # Смотрим кросс-валидационный скор
         print(f'Cross val ROC-AUC score: {float(cv["test_score"].mean())}')
 
         print('Fitting model....................')
-        model.fit(X, y)
+        model.fit(X, y) # Тренируем модель на всём
         print('Model fitted....................')
         if args.save_model:
             with open(args.save_model, 'wb') as file:
