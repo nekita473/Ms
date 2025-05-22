@@ -25,7 +25,7 @@ def main():
     if args.train_df is None and args.save_model:
         warnings.warn('Train datasets are not specified, no saving will be done')
     
-    model = LogisticRegression() # Пока используем обычную логистикческую регрессию
+    model = LogisticRegression() # Пока используем обычную логистическую регрессию
     if args.train_df:
         print('Reading train dataset....................')
         df = pd.read_csv(args.train_df)
