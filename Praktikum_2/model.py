@@ -32,6 +32,7 @@ def main():
     if args.train_df:
         print('Reading train dataset....................')
         df = pd.read_csv(args.train_df)
+        df = df.fillna('NaN')
         # Разделим на фичи и целевую переменную
         X = df.drop(columns=['target', 'session_id', 'client_id'])
         y = df['target']
@@ -64,7 +65,7 @@ def main():
                 verbose          = 200,
                 early_stopping_rounds = 200,
                 class_weights    = {0: 1, 1: (y_train==0).sum() / (y_train==1).sum()},
-                # task_type        = 'GPU'
+                task_type        = 'GPU'
             )
 
             train_pool = Pool(data=X_train[all_features], label=y_train, cat_features=cat_features)
@@ -91,7 +92,8 @@ def main():
         val_pool   = Pool(data=X_val[all_features], label=y_val, cat_features=cat_features)
 
         print('Fitting model....................')
-        model.fit(train_pool, eval_set = val_pool, use_best_model = True)
+        # model.fit(train_pool, eval_set = val_pool, use_best_model = True)
+        model.load(args.model_params, format='cbm')
         print('Model fitted....................')
 
         print(f'Model score: {roc_auc_score(y_val, model.predict_proba(X_val[all_features])[:, 1])}')
@@ -105,9 +107,9 @@ def main():
 
     print('Reading prediction dataset....................')
     df = pd.read_csv(args.predict_df)
+    df = df.fillna('NaN')
 
-    df = df.drop(['target'], axis=1) # В тестовом датасете не будет колонки predict, но пока мы используем train, дропаем её
-    df['session_id'] = list(range(len(df))) # В тестовом датасете предполагается колонка session_id, но пока мы используем train, добавим её
+    df = df.drop(columns=['target', 'client_id']) # В тестовом датасете не будет колонки predict, но пока мы используем train, дропаем её
 
     X = df.drop(['session_id'], axis=1)
     predictions = model.predict(X)
