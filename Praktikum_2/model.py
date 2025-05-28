@@ -72,7 +72,7 @@ def main():
             val_pool   = Pool(data=X_val[all_features], label=y_val, cat_features=cat_features)
 
             # Обучаем
-            model.fit(train_pool, eval_set = val_pool, use_best_model = True)
+            model.fit(train_pool, eval_set=val_pool, use_best_model=True)
 
             # Считаем метрики
             y_pred = model.predict_proba(X_val[all_features])[:, 1]
@@ -105,7 +105,7 @@ def main():
                 class_weights    = {0: 1, 1: (y_train==0).sum() / (y_train==1).sum()},
                 task_type        = 'GPU'
             )
-        model.fit(train_pool, eval_set = val_pool, use_best_model = True)
+        model.fit(train_pool, eval_set=val_pool, use_best_model=True)
         print('Model fitted....................')
 
         print(f'Model score: {roc_auc_score(y_val, model.predict_proba(X_val[all_features])[:, 1])}')
