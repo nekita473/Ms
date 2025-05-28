@@ -16,5 +16,5 @@
 
 Пример запуска:
 ```
-python model.py --model_params model.pkl --predict_df data\df_prepared.csv --prediction_path test_preds.csv
+python model.py --train_df data/df_prepared.csv --predict_df test_session.csv --prediction_path test_preds.csv --save_model best_model.cbm
 ```
