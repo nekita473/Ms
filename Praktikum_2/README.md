@@ -8,13 +8,18 @@
 
 --save_model - Куда сохранять параметры модели для дальнейшего использования
 
---model_params - Откуда загрузить параметры модели, если до этого её обучили и сохранили
+--model_params - Откуда загрузить параметры модели, если до этого её обучили и сохранили. Для примера есть файл best_model.cbm
 
 --predict_df - Датасет для предсказаний (пока используется тот же, что и для тренировки). Обязательно
 
 --prediction_path - Куда сохранить предсказания. Обязательно.
 
-Пример запуска:
+Пример запуска с предтренированной моделью:
 ```
-python model.py --train_df data/df_prepared.csv --predict_df test_session.csv --prediction_path test_preds.csv --save_model best_model.cbm
+python model.py --model_params best_model.cbm --predict_df test_session.csv --prediction_path test_preds.csv
+```
+
+Пример запуска с тренировкой:
+```
+python model.py --train_df data/df_prepared.csv --predict_df test_sessions.csv --prediction_path test_preds.csv --save_model best_model2.cbm
 ```
