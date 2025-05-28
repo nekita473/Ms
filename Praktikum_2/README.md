@@ -32,5 +32,5 @@ python model.py --train_df data/df_prepared.csv --predict_df test_sessions.csv -
 
 Также можно запустить в браузере (локально):
 ```
-streamlit run app.py model_params best_model.cbm
+streamlit run app.py best_model.cbm
 ```
