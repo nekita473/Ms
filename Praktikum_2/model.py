@@ -27,24 +27,11 @@ def main():
     if args.train_df is None and args.save_model:
         warnings.warn('Train datasets are not specified, no saving will be done')
     
-    # Задаём параметры модели
-        model = CatBoostClassifier(
-            iterations       = 3000,
-            learning_rate    = 0.05,
-            depth            = 6,         # аналог num_leaves
-            l2_leaf_reg      = 3,
-            eval_metric      = 'AUC',
-            loss_function    = 'Logloss',
-            random_state     = 42,
-            verbose          = 200,
-            early_stopping_rounds = 200,
-            class_weights    = {0: 1, 1: (y_train==0).sum() / (y_train==1).sum()},
-            # task_type        = 'GPU'
-        )
+
 
     if args.train_df:
         print('Reading train dataset....................')
-        df = pd.read_csv(args.train_df).iloc[:100000]
+        df = pd.read_csv(args.train_df)
         # Разделим на фичи и целевую переменную
         X = df.drop(columns=['target', 'session_id', 'client_id'])
         y = df['target']
@@ -64,6 +51,21 @@ def main():
         for train_index, val_index in skf.split(X, y):
             X_train, X_val = X.iloc[train_index], X.iloc[val_index]
             y_train, y_val = y.iloc[train_index], y.iloc[val_index]
+
+            # Задаём параметры модели
+            model = CatBoostClassifier(
+                iterations       = 3000,
+                learning_rate    = 0.05,
+                depth            = 6,         # аналог num_leaves
+                l2_leaf_reg      = 3,
+                eval_metric      = 'AUC',
+                loss_function    = 'Logloss',
+                random_state     = 42,
+                verbose          = 200,
+                early_stopping_rounds = 200,
+                class_weights    = {0: 1, 1: (y_train==0).sum() / (y_train==1).sum()},
+                # task_type        = 'GPU'
+            )
 
             train_pool = Pool(data=X_train[all_features], label=y_train, cat_features=cat_features)
             val_pool   = Pool(data=X_val[all_features], label=y_val, cat_features=cat_features)
