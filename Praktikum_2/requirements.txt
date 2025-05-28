@@ -4,3 +4,4 @@ numpy
 catboost
 matplotlib
 seaborn
+streamlit
