@@ -92,8 +92,20 @@ def main():
         val_pool   = Pool(data=X_val[all_features], label=y_val, cat_features=cat_features)
 
         print('Fitting model....................')
-        # model.fit(train_pool, eval_set = val_pool, use_best_model = True)
-        model.load(args.model_params, format='cbm')
+        model = CatBoostClassifier(
+                iterations       = 3000,
+                learning_rate    = 0.05,
+                depth            = 6,         # аналог num_leaves
+                l2_leaf_reg      = 3,
+                eval_metric      = 'AUC',
+                loss_function    = 'Logloss',
+                random_state     = 42,
+                verbose          = 200,
+                early_stopping_rounds = 200,
+                class_weights    = {0: 1, 1: (y_train==0).sum() / (y_train==1).sum()},
+                task_type        = 'GPU'
+            )
+        model.fit(train_pool, eval_set = val_pool, use_best_model = True)
         print('Model fitted....................')
 
         print(f'Model score: {roc_auc_score(y_val, model.predict_proba(X_val[all_features])[:, 1])}')
@@ -102,7 +114,7 @@ def main():
             print(f'Model saved to {args.save_model}....................')
     
     if args.model_params:
-        model.load(args.model_params, format='cbm')
+        model.load_model(args.model_params, format='cbm')
         print('Model loaded....................')
 
     print('Reading prediction dataset....................')
