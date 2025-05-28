@@ -29,3 +29,8 @@ python model.py --model_params best_model.cbm --predict_df test_sessions.csv --p
 ```
 python model.py --train_df data/df_prepared.csv --predict_df test_sessions.csv --prediction_path test_preds.csv --save_model best_model2.cbm
 ```
+
+Также можно запустить в браузере (локально):
+```
+streamlit run app.py model_params best_model.cbm
+```
