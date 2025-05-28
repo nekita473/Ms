@@ -16,7 +16,7 @@
 
 Пример запуска с предтренированной моделью:
 ```
-python model.py --model_params best_model.cbm --predict_df test_session.csv --prediction_path test_preds.csv
+python model.py --model_params best_model.cbm --predict_df test_sessions.csv --prediction_path test_preds.csv
 ```
 
 Пример запуска с тренировкой:
