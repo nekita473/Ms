@@ -1,9 +1,11 @@
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import cross_validate
 import argparse
 import pandas as pd
 import warnings
-import pickle
+from sklearn.model_selection import StratifiedKFold
+import numpy as np
+from sklearn.model_selection import train_test_split
+from catboost import CatBoostClassifier, Pool
+from sklearn.metrics import roc_auc_score
 
 
 def parse_args():
@@ -25,36 +27,85 @@ def main():
     if args.train_df is None and args.save_model:
         warnings.warn('Train datasets are not specified, no saving will be done')
     
-    model = LogisticRegression() # Пока используем обычную логистическую регрессию
+    # Задаём параметры модели
+        model = CatBoostClassifier(
+            iterations       = 3000,
+            learning_rate    = 0.05,
+            depth            = 6,         # аналог num_leaves
+            l2_leaf_reg      = 3,
+            eval_metric      = 'AUC',
+            loss_function    = 'Logloss',
+            random_state     = 42,
+            verbose          = 200,
+            early_stopping_rounds = 200,
+            class_weights    = {0: 1, 1: (y_train==0).sum() / (y_train==1).sum()},
+            # task_type        = 'GPU'
+        )
+
     if args.train_df:
         print('Reading train dataset....................')
-        df = pd.read_csv(args.train_df)
-        X = df.drop(['target'], axis=1)
+        df = pd.read_csv(args.train_df).iloc[:100000]
+        # Разделим на фичи и целевую переменную
+        X = df.drop(columns=['target', 'session_id', 'client_id'])
         y = df['target']
 
+        # Список категориальных переменных
+        cat_features = ['utm_medium', 'utm_source', 'utm_campaign', 'utm_adcontent', 'device_os', 'device_brand', 'device_browser', 'geo_country', 'geo_city']
+
+        # Список числовых переменных
+        num_features = ['visit_number', 'is_mobile', 'screen_area_coeff', 'visit_month', 'visit_hour', 'visit_weekday']
+
+        # Список всех нужных нам колонок
+        all_features = cat_features + num_features
+
         print('Starting cross validation....................')
-        cv = cross_validate(model, X, y, cv=5, scoring='roc_auc', verbose=10) # Смотрим кросс-валидационный скор
-        print(f'Cross val ROC-AUC score: {float(cv["test_score"].mean())}')
+        scores = []
+        skf = StratifiedKFold(n_splits=2)
+        for train_index, val_index in skf.split(X, y):
+            X_train, X_val = X.iloc[train_index], X.iloc[val_index]
+            y_train, y_val = y.iloc[train_index], y.iloc[val_index]
+
+            train_pool = Pool(data=X_train[all_features], label=y_train, cat_features=cat_features)
+            val_pool   = Pool(data=X_val[all_features], label=y_val, cat_features=cat_features)
+
+            # Обучаем
+            model.fit(train_pool, eval_set = val_pool, use_best_model = True)
+
+            # Считаем метрики
+            y_pred = model.predict_proba(X_val[all_features])[:, 1]
+            scores.append(roc_auc_score(y_val, y_pred))
+
+        print(f'Cross val ROC-AUC score: {np.mean(scores)}')
+
+        # Разделим на train и validation
+        X_train, X_val, y_train, y_val = train_test_split(
+            X, y,
+            test_size=0.2,
+            random_state=42,
+            stratify=y
+        )
+
+        train_pool = Pool(data=X_train[all_features], label=y_train, cat_features=cat_features)
+        val_pool   = Pool(data=X_val[all_features], label=y_val, cat_features=cat_features)
 
         print('Fitting model....................')
-        model.fit(X, y) # Тренируем модель на всём
+        model.fit(train_pool, eval_set = val_pool, use_best_model = True)
         print('Model fitted....................')
+
+        print(f'Model score: {roc_auc_score(y_val, model.predict_proba(X_val[all_features])[:, 1])}')
         if args.save_model:
-            with open(args.save_model, 'wb') as file:
-                pickle.dump(model, file)
+            model.save_model(args.save_model, format="cbm", export_parameters=None, pool=None)
             print(f'Model saved to {args.save_model}....................')
     
     if args.model_params:
-        with open(args.model_params, 'rb') as file:
-            model = pickle.load(file)
-            print('Model loaded....................')
+        model.load(args.model_params, format='cbm')
+        print('Model loaded....................')
 
     print('Reading prediction dataset....................')
     df = pd.read_csv(args.predict_df)
 
     df = df.drop(['target'], axis=1) # В тестовом датасете не будет колонки predict, но пока мы используем train, дропаем её
     df['session_id'] = list(range(len(df))) # В тестовом датасете предполагается колонка session_id, но пока мы используем train, добавим её
-    # Также тестовый датасет нужно обработать (выкинуть фичи, сохранённым OneHotEncoding обработать категориальные). Пока не сделано, но помним об этом
 
     X = df.drop(['session_id'], axis=1)
     predictions = model.predict(X)
