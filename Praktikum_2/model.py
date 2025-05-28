@@ -27,6 +27,15 @@ def main():
     if args.train_df is None and args.save_model:
         warnings.warn('Train datasets are not specified, no saving will be done')
 
+    # Список категориальных переменных
+    cat_features = ['utm_medium', 'utm_source', 'utm_campaign', 'utm_adcontent', 'device_os', 'device_brand', 'device_browser', 'geo_country', 'geo_city']
+
+    # Список числовых переменных
+    num_features = ['visit_number', 'is_mobile', 'screen_area_coeff', 'visit_month', 'visit_hour', 'visit_weekday']
+
+    # Список всех нужных нам колонок
+    all_features = cat_features + num_features
+
     if args.train_df:
         print('Reading train dataset....................')
         df = pd.read_csv(args.train_df)
@@ -34,16 +43,7 @@ def main():
         # Разделим на фичи и целевую переменную
         X = df.drop(columns=['target', 'session_id', 'client_id'])
         y = df['target']
-
-        # Список категориальных переменных
-        cat_features = ['utm_medium', 'utm_source', 'utm_campaign', 'utm_adcontent', 'device_os', 'device_brand', 'device_browser', 'geo_country', 'geo_city']
-
-        # Список числовых переменных
-        num_features = ['visit_number', 'is_mobile', 'screen_area_coeff', 'visit_month', 'visit_hour', 'visit_weekday']
-
-        # Список всех нужных нам колонок
-        all_features = cat_features + num_features
-
+        
         print('Starting cross validation....................')
         scores = []
         skf = StratifiedKFold(n_splits=2)
@@ -112,6 +112,7 @@ def main():
             print(f'Model saved to {args.save_model}....................')
     
     if args.model_params:
+        model = CatBoostClassifier()
         model.load_model(args.model_params, format='cbm')
         print('Model loaded....................')
 
@@ -122,7 +123,7 @@ def main():
     df = df.drop(columns=['client_id'])
 
     X = df.drop(['session_id'], axis=1)
-    predictions = model.predict(X[all_features])[:, 1]
+    predictions = model.predict(X[all_features])
 
     predictions_df = pd.DataFrame()
     predictions_df['session_id'] = df['session_id']
