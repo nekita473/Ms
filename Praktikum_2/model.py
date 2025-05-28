@@ -19,6 +19,94 @@ def parse_args():
     return args
 
 
+def prepare_df(sessions):
+    # Удаляем колонку device_model
+    sessions = sessions.drop(columns=["device_model"])
+
+    # Для всех Desktop устройств указываем desktop в качестве бренда
+    sessions["device_brand"] = sessions["device_brand"].where(sessions['device_category'] != "desktop", 'desktop')
+
+    # Для каждого бренда определяем основную OS и сохраняем словарь
+    os_dict = sessions.groupby(["device_brand", "device_os"], as_index=False).size().sort_values(["device_brand", "size"], ascending=[True, False]) \
+            .groupby(["device_brand"], as_index=False).first().drop(columns=["size"]).set_index('device_brand')['device_os'].to_dict()
+
+    # Заполняем пустые значения в колонке device_os основной OS для бренда
+    sessions['device_os'] = sessions['device_os'].fillna(sessions['device_brand'].map(os_dict))
+
+    # Заполним случайными парами os + brand
+    missing_idx = sessions[(sessions['device_brand'].isna()) | (sessions['device_os'].isna())].index
+    values_to_refill = (
+        sessions[(sessions['device_brand'].notna()) & (sessions['device_os'].notna())][["device_os", "device_brand"]]
+        .sample(len(missing_idx), random_state=42)
+        .reset_index(drop=True)
+    )
+
+    sessions.loc[missing_idx, ["device_os", "device_brand"]] = values_to_refill.values
+
+    # Разделяем ширину и высоту экрана. Приводим к числовому типу
+    sessions[["screen_width", "screen_height"]] = pd.DataFrame(sessions["device_screen_resolution"].str.split('x').tolist()) \
+                                                    .apply(pd.to_numeric, errors='coerce').astype('Int64')
+    # Находим площадь устройства для каждой сессии
+    sessions["screen_area"] = sessions["screen_width"] * sessions["screen_height"]
+
+    # Считаем коэффициент площади
+    sessions["screen_area_coeff"] = round(sessions["screen_area"] / sessions.groupby(["device_category"])["screen_area"].transform('mean'), 2)
+
+    # При обучении модели выяснилось, что есть несколько NaN значений. Присвоим им 1
+    sessions["screen_area_coeff"] = sessions["screen_area_coeff"].fillna(1)
+
+    # Удаляем больше не нужные колонки
+    sessions = sessions.drop(columns=["device_screen_resolution", "screen_width", "screen_height", "screen_area"])
+
+    # Отберём страны СНГ
+    sng_countries = {
+        'Armenia', 'Azerbaijan', 'Belarus', 'Kazakhstan', 'Kyrgyzstan',
+        'Moldova', 'Tajikistan', 'Turkmenistan', 'Uzbekistan', 'Ukraine'
+    }
+
+    def map_country(country):
+        if country == 'Russia':
+            return 'Russia'
+        elif country in sng_countries:
+            return 'SNG'
+        else:
+            return 'Other'
+
+    sessions["geo_country"] = sessions["geo_country"].apply(map_country)
+
+    # Список городов миллионников
+    millionaires = ["Yekaterinburg", "Krasnoyarsk", "Kazan", "Novosibirsk", "Nizhny Novgorod", "Ufa",
+                    "Chelyabinsk", "Tula", "Voronez", "Rostov-on-Don", "Omsk", "Perm", "Samara", "Volgograd"]
+
+    def map_city(city):
+        if city in ('Moscow', 'Saint Petersburg'):
+            return city
+        elif city in millionaires:
+            return 'Millonaries'
+        else:
+            return 'Other'
+        
+    sessions["geo_city"] = sessions["geo_city"].apply(map_city)
+
+    sessions["is_mobile"] = sessions["device_category"].apply(lambda x: int(x != 'desktop'))
+    # Удалим ненужную колонку
+    sessions = sessions.drop(columns=["device_category"])
+    for col in ["device_os", "device_brand", "device_browser"]:
+        if col == 'device_brand': 
+            # Для бренда получим 6 категорий, т.к. одно место занимает desktop
+            top_values = sessions[col].value_counts().head(6).index
+        else:
+            top_values = sessions[col].value_counts().head(5).index
+        sessions[col] = sessions[col].where(sessions[col].isin(top_values), 'Other')
+
+    sessions['visit_month'] = pd.to_datetime(sessions['visit_date']).dt.month
+    sessions['visit_hour'] = pd.to_datetime(sessions['visit_time'], format='%H:%M:%S').dt.hour
+    sessions['visit_weekday'] = sessions['visit_date'].dt.dayofweek + 1
+    sessions = sessions.drop(columns=["visit_date", "visit_time"])
+    sessions = sessions.fillna('NaN')
+    return sessions
+
+
 def main():
     args = parse_args()
     if not args.train_df and not args.model_params:
@@ -117,12 +205,10 @@ def main():
         print('Model loaded....................')
 
     print('Reading prediction dataset....................')
-    df = pd.read_csv(args.predict_df)
-    df = df.fillna('NaN')
+    df = pd.read_csv(args.predict_df, parse_dates=["visit_date"])
+    df = prepare_df(df)
 
-    df = df.drop(columns=['client_id'])
-
-    X = df.drop(['session_id'], axis=1)
+    X = df
     predictions = model.predict(X[all_features])
 
     predictions_df = pd.DataFrame()
