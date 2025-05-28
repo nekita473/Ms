@@ -121,7 +121,7 @@ def main():
     df = pd.read_csv(args.predict_df)
     df = df.fillna('NaN')
 
-    df = df.drop(columns=['target', 'client_id'])
+    df = df.drop(columns=['client_id'])
 
     X = df.drop(['session_id'], axis=1)
     predictions = model.predict(X)
