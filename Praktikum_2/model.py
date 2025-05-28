@@ -26,8 +26,6 @@ def main():
     
     if args.train_df is None and args.save_model:
         warnings.warn('Train datasets are not specified, no saving will be done')
-    
-
 
     if args.train_df:
         print('Reading train dataset....................')
@@ -124,7 +122,7 @@ def main():
     df = df.drop(columns=['client_id'])
 
     X = df.drop(['session_id'], axis=1)
-    predictions = model.predict(X)
+    predictions = model.predict(X[all_features])[:, 1]
 
     predictions_df = pd.DataFrame()
     predictions_df['session_id'] = df['session_id']
